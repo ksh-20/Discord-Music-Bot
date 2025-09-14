@@ -1,5 +1,5 @@
-import discord
-from discord.ui import Button, Select, View, SelectOption
+import discord #SelectOption is present in this itself
+from discord.ui import Button, Select, View
 from discord.ext import commands #allows bot to recognise the commands
 import asyncio #asynchronous function tool
 from asyncio import run_coroutine_threadsafe
