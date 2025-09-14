@@ -55,3 +55,4 @@ Note: Bots can join the servers which are either owned by you or in those server
 1. Install the code as zip file and extract the folder. Open the extracted folder in the ide of choice.
 2. Go to the Install dependencies section and install the necessary packages.
 3. Create a text file token.txt and store the discord bot token.
+4. Run the main.py file and the bot will come online.
