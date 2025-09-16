@@ -22,6 +22,10 @@ class music_cog(commands.Cog):
         self.YTDL_OPTIONS = {'format':'bestaudio', 'nonplaylist': 'True'} #options for downloading the song
         self.FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'} #options for playing the song
 
+        #Colour options for Embed
+        self.embedBlue = 0x2c76dd
+        self.embedRed = 0xdf1141
+        self.embedGreen = 0x0eaa51
 
         self.vc = {}  #status for if the bot is in a voice channel or not
 
@@ -36,6 +40,23 @@ class music_cog(commands.Cog):
             self.queue_index[id] = 0
             self.vc[id] = None
             self.is_paused[id] = self.is_playing[id] = False
+
+    #Function for generating embeds
+    def now_playing_embed(self,ctx,song):
+        title = song['title']
+        link = song['link']
+        thumbnail = song['thumbnail']
+        author = ctx.author #author of the command message sent
+        avatar = author.avatar_url
+
+        embed = discord.Embed(
+            title="Now Playing",
+            description=f'[{title}]({link})', #[] is the text displayed, () is the link redirection
+            colour=self.embedBlue
+        )
+        embed.set_thumbnail(url=thumbnail)
+        embed.set_footer(text=f'Song added by: {str(author)}', icon_url=avatar)
+        return embed
 
     #The function below is for user sending the msg and channel. ctx refers to the context of the message.
     async def join_vc(self, ctx, channel):
@@ -76,3 +97,56 @@ class music_cog(commands.Cog):
             'source': info['formats'][0]['url'], 
             'title': info['title']
         }
+    
+    def play_next(self, ctx):
+        id = int(ctx.guild.id)
+        if not self.is_playing[id]:
+            return
+        
+        if self.queue_index[id] + 1 < self.music_queue[id]:
+            self.is_playing[id] = True
+            self.queue_index[id] += 1
+
+            song = self.music_queue[id][self.queue_index[id]][0]
+            message = self.now_playing_embed(ctx,song)
+
+            #We need a co-routine function to send the message since play_next isnt asynchronous
+            coro = ctx.send(message)
+            fut = run_coroutine_threadsafe(coro, self.bot.loop)
+
+            try:
+                fut.result()
+            except:
+                pass
+            
+            self.vc[id].play(discord.FFmpegPCMAudio(
+                song['source'], **self.FFMPEG_OPTIONS
+            ), after= lambda e: self.play_next(ctx))
+
+        else:
+            self.queue_index[id] += 1
+            self.is_playing[id] = False
+
+    async def play_music(self,ctx):
+        id = int(ctx.guild.id)
+        #if the queue index is less than length of the music queue
+        if self.queue_index[id] < len(self.music_queue[id]):
+            self.is_playing[id] = True
+            self.is_paused[id] = False
+
+            #these awaits can be done only in asynchronous functions.
+            await self.join_vc(ctx, self.music_queue[id][self.queue_index[id]][1]) #gives us a voice channel to join
+
+            song = self.music_queue[id][self.queue_index[id]][0]
+            message = self.now_playing_embed(ctx,song)
+            await ctx.send(embed=message)
+            
+            #go to the vc of our server and play the song using the ffmpeg audio
+            self.vc[id].play(discord.FFmpegPCMAudio(
+                song['source'], **self.FFMPEG_OPTIONS
+            ), after= lambda e: self.play_next(ctx))
+
+        else:
+            await ctx.send("There are no songs in the queue to be played.")
+            self.queue_index[id] += 1
+            self.is_playing[id] = False
