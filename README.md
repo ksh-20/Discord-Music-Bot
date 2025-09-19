@@ -1,3 +1,5 @@
+<h1>Discord Music Bot</h1>
+
 ## Requirements:
 1. Python Latest Version
 2. Any IDE of Choice
